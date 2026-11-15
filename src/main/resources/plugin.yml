@@ -1,0 +1,18 @@
+name: ZyvenAntiCheat
+version: 1.0.0
+main: com.zyven.anticheat.ZyvenAntiCheat
+api-version: '1.21'
+author: Zyven
+description: Server-side anti-cheat with movement, mining and anti-ESP protection.
+commands:
+  zac:
+    description: ZyvenAntiCheat admin command
+    usage: /zac <alerts|vl|reload>
+    permission: zyven.admin
+permissions:
+  zyven.admin:
+    default: op
+  zyven.alerts:
+    default: op
+  zyven.bypass:
+    default: false
