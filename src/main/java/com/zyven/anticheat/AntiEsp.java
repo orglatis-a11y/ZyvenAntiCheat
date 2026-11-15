@@ -12,6 +12,13 @@ import org.bukkit.util.Vector;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
+/**
+ * Anti-ESP / Anti-Freecam:
+ *  1. Entities with no line of sight to the player's REAL body are hidden (never sent to the client),
+ *     so ESP and freecam have nothing to render.
+ *  2. A per-player invisible decoy is placed behind walls. Only that player is sent it. If they keep
+ *     aiming at it through walls they are flagged as ESP and get a particle flood (client lag).
+ */
 public class AntiEsp extends BukkitRunnable {
     private final ZyvenAntiCheat ac;
     private final Set<UUID> decoyIds = new HashSet<>();
@@ -49,6 +56,7 @@ public class AntiEsp extends BukkitRunnable {
                 if (!vis && !hid) { p.hideEntity(ac, t); d.hidden.add(id); }
                 else if (vis && hid) { p.showEntity(ac, t); d.hidden.remove(id); }
             }
+            // release entities that left range / despawned
             Iterator<UUID> it = d.hidden.iterator();
             while (it.hasNext()) {
                 UUID id = it.next();
@@ -58,6 +66,7 @@ public class AntiEsp extends BukkitRunnable {
                 it.remove();
             }
 
+            // decoy / honeypot
             if (decoyOn && p.getGameMode() == GameMode.SURVIVAL) {
                 if (d.decoy == null || !d.decoy.isValid() || now - d.decoyMoved > 10000) {
                     spawnDecoy(p, d, eye);
@@ -77,6 +86,7 @@ public class AntiEsp extends BukkitRunnable {
                 }
             }
 
+            // visual lag for confirmed ESP users (only they receive it)
             if (now < d.punishUntil) {
                 int n = Math.min(cfg.getInt("anti-esp.punish.particles", 300), 800);
                 Location l = p.getLocation();
@@ -96,7 +106,7 @@ public class AntiEsp extends BukkitRunnable {
             Location loc = p.getLocation().add(Math.cos(ang) * dist, r.nextDouble(-1, 2), Math.sin(ang) * dist);
             if (!w.isChunkLoaded(loc.getBlockX() >> 4, loc.getBlockZ() >> 4)) continue;
             BoundingBox probe = BoundingBox.of(loc.toVector(), 0.3, 0.9, 0.3);
-            if (visible(eye, probe)) continue;
+            if (visible(eye, probe)) continue; // must be hidden from legit sight
             Villager v = w.spawn(loc, Villager.class, e -> {
                 e.setVisibleByDefault(false);
                 e.setInvisible(true);
@@ -108,7 +118,7 @@ public class AntiEsp extends BukkitRunnable {
                 e.setPersistent(false);
                 e.setRemoveWhenFarAway(true);
             });
-            p.showEntity(ac, v);
+            p.showEntity(ac, v); // only this player is sent the decoy
             d.decoy = v;
             d.decoyMoved = System.currentTimeMillis();
             d.stare = 0;
@@ -141,6 +151,7 @@ public class AntiEsp extends BukkitRunnable {
         }
     }
 
+    // ---- line of sight ----
     private boolean visible(Location eye, BoundingBox b) {
         double cx = b.getCenterX(), cy = b.getCenterY(), cz = b.getCenterZ();
         Vector[] pts = {
@@ -164,7 +175,7 @@ public class AntiEsp extends BukkitRunnable {
             if (res == null || res.getHitBlock() == null) return true;
             Block hb = res.getHitBlock();
             if (hb.getType().isOccluding()) return false;
-            from = res.getHitPosition().clone().add(unit.multiply(1.0));
+            from = res.getHitPosition().clone().add(unit.multiply(1.0)); // pass through glass etc.
         }
         return false;
     }

@@ -18,6 +18,7 @@ public class MiningCheck implements Listener {
         return p.getGameMode() != GameMode.SURVIVAL || p.hasPermission("zyven.bypass");
     }
 
+    /** NoDelay: gap between breaking a block and starting the next one. */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onDamage(BlockDamageEvent e) {
         Player p = e.getPlayer();
@@ -44,6 +45,7 @@ public class MiningCheck implements Listener {
         d.digStart = now;
     }
 
+    /** Speed mine: total time to break, based on the player's real break speed. */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent e) {
         Player p = e.getPlayer();
@@ -56,18 +58,20 @@ public class MiningCheck implements Listener {
         long elapsed = tracked ? now - d.digStart : 0;
         d.digLoc = null;
 
+        // Break after a cancelled (NoDelay) dig: just block it, already flagged.
         if (!tracked && now - d.lastNoDelayFlag < 500) { e.setCancelled(true); return; }
 
+        // getBreakSpeed already includes Haste, Mining Fatigue, Efficiency, tool, Aqua Affinity, air penalty.
         float speed = b.getBreakSpeed(p);
-        if (speed >= 1f || speed <= 0f || b.getType().getHardness() == 0) return;
+        if (speed >= 1f || speed <= 0f || b.getType().getHardness() == 0) return; // instant-break
         double ticks = Math.ceil(1.0 / speed);
-        if (ticks <= 3) return;
+        if (ticks <= 3) return; // very fast legit setups (Haste + Efficiency): timing is not reliable, NoDelay check covers them
 
         double tol = ac.getConfig().getDouble("checks.speedmine.tolerance", 0.7);
         double required = (ticks - 1) * 50.0 * tol - Math.min(p.getPing(), 300);
         if (elapsed < required) {
             d.mineBuf++;
-            if (d.mineBuf >= 2) {
+            if (d.mineBuf >= 2) { // never punish a single odd break
                 e.setCancelled(true);
                 ac.flag(p, "speedmine", 1.5, "took " + elapsed + "ms, needs ~" + (long) required + "ms");
             }
@@ -76,6 +80,7 @@ public class MiningCheck implements Listener {
         }
     }
 
+    /** Record the break time only if the break actually went through. */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onBreakDone(BlockBreakEvent e) {
         ac.data(e.getPlayer()).lastBreak = System.currentTimeMillis();

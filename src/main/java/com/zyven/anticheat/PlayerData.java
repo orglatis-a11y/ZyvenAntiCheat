@@ -7,10 +7,15 @@ import java.util.*;
 public class PlayerData {
     public final Map<String, Double> vl = new HashMap<>();
     public final Set<UUID> hidden = new HashSet<>();
-    public Location lastSafe, digLoc;
-    public long lastTeleport = System.currentTimeMillis(), lastVelocity, lastSpecial, digStart, punishUntil, decoyMoved, lastIce, lastBreak, lastNoDelayFlag;
-    public double lastDy, groundY, speedBuf;
-    public int noDelayBuf, mineBuf, airTicks, flyBuf, waterTicks, stare;
+    public final Map<UUID, Long> recentHits = new HashMap<>();
+    public Location lastSafe, digLoc, bait;
+    public long lastTeleport = System.currentTimeMillis(), lastVelocity, lastSpecial, digStart, punishUntil, decoyMoved,
+            lastIce, lastBreak, lastNoDelayFlag, lastMove, lastJump, lastElytraBoost, useStart, lastCrystalPlace,
+            lastXp, yawDeltaAt, cpsWindow, anchorWin, crystalWin, baitTime;
+    public double lastDy, groundY, speedBuf, glideStartY, lastYawDelta;
+    public int noDelayBuf, mineBuf, airTicks, flyBuf, waterTicks, stare, jumpBuf, nofallBuf, airStuckBuf, reachBuf,
+            angleBuf, wallBuf, aimBuf, crystalBuf, crystalCount, fastUseBuf, cps, cpsBuf, anchorCount, glideTicks,
+            hoverGlide, xpBuf, boatBuf, vehSpeedBuf, vehControlBuf;
     public boolean lastGround;
     public Villager decoy;
 

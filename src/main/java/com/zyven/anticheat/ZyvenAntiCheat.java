@@ -25,10 +25,17 @@ public class ZyvenAntiCheat extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getPluginManager().registerEvents(new MovementCheck(this), this);
         Bukkit.getPluginManager().registerEvents(new MiningCheck(this), this);
+        Bukkit.getPluginManager().registerEvents(new CombatCheck(this), this);
+        Bukkit.getPluginManager().registerEvents(new VehicleCheck(this), this);
+        Bukkit.getPluginManager().registerEvents(new UtilityCheck(this), this);
+        BaitBlocks bait = new BaitBlocks(this);
+        Bukkit.getPluginManager().registerEvents(bait, this);
+        bait.runTaskTimer(this, 60L, 40L);
         esp = new AntiEsp(this);
         if (getConfig().getBoolean("anti-esp.enabled", true)) {
             esp.runTaskTimer(this, 20L, Math.max(1, getConfig().getLong("anti-esp.interval-ticks", 5)));
         }
+        // violation decay
         Bukkit.getScheduler().runTaskTimer(this, () -> data.values().forEach(d ->
                 d.vl.replaceAll((k, v) -> Math.max(0, v - 0.5))), 200L, 200L);
         getLogger().info("ZyvenAntiCheat enabled.");
@@ -97,4 +104,4 @@ public class ZyvenAntiCheat extends JavaPlugin implements Listener {
         }
         return true;
     }
-                                     }
+}

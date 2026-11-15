@@ -48,14 +48,31 @@ public class MovementCheck implements Listener {
         double dx = to.getX() - from.getX(), dz = to.getZ() - from.getZ(), dy = to.getY() - from.getY();
         double h = Math.hypot(dx, dz);
 
-        if (p.isGliding() || p.isRiptiding() || special(to)) d.lastSpecial = now;
+        // rotation tracking (used by aim-assist check)
+        double yd = Math.abs(((to.getYaw() - from.getYaw() + 540) % 360) - 180);
+        if (yd > 1) { d.lastYawDelta = yd; d.yawDeltaAt = now; }
+        d.lastMove = now;
+
+        if (!p.isGliding()) d.glideTicks = 0;
+        boolean special = special(to);
+
+        // ---- Elytra ----
+        if (p.isGliding() && !ac.exempt(p)) {
+            elytra(p, d, h, dy, now, to);
+            d.lastSpecial = now;
+            d.reset(to);
+            d.lastGround = true;
+            return;
+        }
+
+        if (p.isRiptiding() || special) d.lastSpecial = now;
         boolean exempt = ac.exempt(p) || p.isInsideVehicle()
                 || now - d.lastTeleport < 1000 || now - d.lastVelocity < 1500 || now - d.lastSpecial < 1500
                 || p.hasPotionEffect(PotionEffectType.LEVITATION) || p.hasPotionEffect(PotionEffectType.SLOW_FALLING);
         if (exempt) { d.reset(to); d.lastGround = true; return; }
         if (d.lastSafe == null) d.reset(from);
 
-        boolean ground = groundBelow(to) || standingOnEntity(p);
+        boolean ground = groundBelow(to, 0.1) || standingOnEntity(p);
         Block feet = to.getBlock();
         boolean liquid = feet.isLiquid() || to.clone().add(0, 1, 0).getBlock().isLiquid();
         boolean climb = Tag.CLIMBABLE.isTagged(feet.getType());
@@ -63,6 +80,9 @@ public class MovementCheck implements Listener {
         if (below.name().contains("ICE")) d.lastIce = now;
 
         String flagged = null, info = "";
+
+        // ---- Click TP / teleport ----
+        if (h > 7) { flagged = "clicktp"; info = "h=" + r(h); }
 
         if (ground || liquid || climb) {
             d.groundY = to.getY();
@@ -73,8 +93,18 @@ public class MovementCheck implements Listener {
             double expected = (d.lastDy - 0.08) * 0.98;
             int jb = amp(p, PotionEffectType.JUMP_BOOST);
 
-            if (d.lastGround && dy > 0.42 + 0.1 * jb + 0.06) { flagged = "highjump"; info = "jump dy=" + r(dy); }
+            // jump start: NoJumpDelay + high jump
+            if (d.lastGround && dy > 0.3) {
+                long gap = now - d.lastJump;
+                if (d.lastJump > 0 && gap < 420) {
+                    d.jumpBuf++;
+                    if (d.jumpBuf >= 3 && flagged == null) { flagged = "nojumpdelay"; info = "gap=" + gap + "ms"; }
+                } else d.jumpBuf = Math.max(0, d.jumpBuf - 1);
+                d.lastJump = now;
+                if (flagged == null && dy > 0.42 + 0.1 * jb + 0.06) { flagged = "highjump"; info = "jump dy=" + r(dy); }
+            }
 
+            // gravity prediction (fly / spider)
             if (flagged == null && d.airTicks >= 3) {
                 if (dy > expected + 0.06) {
                     if (++d.flyBuf >= 3) {
@@ -83,14 +113,24 @@ public class MovementCheck implements Listener {
                     }
                 } else d.flyBuf = Math.max(0, d.flyBuf - 1);
             }
+            // hover
             if (flagged == null && d.airTicks > 12 && Math.abs(dy) < 0.02) { flagged = "fly"; info = "hover"; }
 
+            // total rise
             double maxRise = 1.30 + 0.6 * jb + 0.15;
             if (flagged == null && to.getY() - d.groundY > maxRise) {
                 flagged = "highjump"; info = "rise=" + r(to.getY() - d.groundY);
             }
+
+            // NoFall: client claims onGround while falling with nothing below
+            if (flagged == null) {
+                if (p.isOnGround() && dy < -0.25 && !groundBelow(to, 0.9)) {
+                    if (++d.nofallBuf >= 4) { flagged = "nofall"; info = "spoofed onGround dy=" + r(dy); }
+                } else d.nofallBuf = Math.max(0, d.nofallBuf - 1);
+            }
         }
 
+        // speed
         if (flagged == null && h > 0) {
             double limit = ground ? 0.37 : 0.42;
             limit *= p.getWalkSpeed() / 0.2;
@@ -104,6 +144,7 @@ public class MovementCheck implements Listener {
             } else d.speedBuf = Math.max(0, d.speedBuf - 0.5);
         }
 
+        // jesus
         if (flagged == null) {
             Block under = to.clone().subtract(0, 0.2, 0).getBlock();
             boolean walkingOnWater = under.isLiquid() && !feet.isLiquid() && !p.isSwimming()
@@ -131,6 +172,24 @@ public class MovementCheck implements Listener {
         d.lastGround = ground;
     }
 
+    private void elytra(Player p, PlayerData d, double h, double dy, long now, Location to) {
+        if (!ac.enabled("elytrafly")) return;
+        boolean boosted = now - d.lastElytraBoost < 4000 || now - d.lastVelocity < 2500;
+        d.glideTicks++;
+        if (d.glideTicks == 1) d.glideStartY = to.getY();
+        if (boosted) { d.hoverGlide = 0; d.glideStartY = Math.max(d.glideStartY, to.getY()); return; }
+
+        if (h > 4.5) ac.flag(p, "elytrafly", 1.0, "speed h=" + r(h));
+
+        if (h < 0.15 && Math.abs(dy) < 0.03) d.hoverGlide++; else d.hoverGlide = Math.max(0, d.hoverGlide - 1);
+        if (d.hoverGlide >= 15) { ac.flag(p, "elytrafly", 1.0, "hovering"); d.hoverGlide = 0; }
+
+        if (d.glideTicks > 20 && to.getY() - d.glideStartY > 12) {
+            ac.flag(p, "elytrafly", 1.0, "climbing without firework");
+            d.glideStartY = to.getY();
+        }
+    }
+
     private static String r(double v) { return String.format("%.3f", v); }
 
     private static int amp(Player p, PotionEffectType t) {
@@ -138,20 +197,20 @@ public class MovementCheck implements Listener {
         return pe == null ? 0 : pe.getAmplifier() + 1;
     }
 
-    private static boolean groundBelow(Location l) {
-        for (double ox = -0.3; ox <= 0.3; ox += 0.3)
-            for (double oz = -0.3; oz <= 0.3; oz += 0.3) {
+    static boolean groundBelow(Location l, double depth) {
+        double[] offs = {-0.31, 0, 0.31};
+        for (double ox : offs)
+            for (double oz : offs) {
                 int x = (int) Math.floor(l.getX() + ox), z = (int) Math.floor(l.getZ() + oz);
-                Block b = l.getWorld().getBlockAt(x, (int) Math.floor(l.getY() - 0.1), z);
+                Block b = l.getWorld().getBlockAt(x, (int) Math.floor(l.getY() - depth), z);
                 if (!b.isPassable() && !b.isLiquid()) return true;
-                Block f = l.getWorld().getBlockAt(x, (int) Math.floor(l.getY() - 0.6), z);
-                Material m = f.getType();
+                Material m = l.getWorld().getBlockAt(x, (int) Math.floor(l.getY() - depth - 0.5), z).getType();
                 if (Tag.FENCES.isTagged(m) || Tag.WALLS.isTagged(m) || Tag.FENCE_GATES.isTagged(m)) return true;
             }
         return false;
     }
 
-    private static boolean standingOnEntity(Player p) {
+    static boolean standingOnEntity(Player p) {
         for (Entity en : p.getNearbyEntities(1.5, 1.5, 1.5))
             if (en instanceof Boat || en instanceof Shulker) return true;
         return false;
@@ -165,7 +224,7 @@ public class MovementCheck implements Listener {
         return false;
     }
 
-    private static boolean special(Location l) {
+    static boolean special(Location l) {
         for (double y : new double[]{0, -0.5, -1.2}) {
             Material m = l.clone().add(0, y, 0).getBlock().getType();
             if (m == Material.SLIME_BLOCK || m == Material.HONEY_BLOCK || m == Material.COBWEB
