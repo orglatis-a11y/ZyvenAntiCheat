@@ -3,14 +3,35 @@ punish-command: "kick %player% ZyvenAntiCheat: Unfair advantage detected (%check
 setback: true
 
 checks:
-  fly:       { enabled: true, kick-vl: 12 }
-  speed:     { enabled: true, kick-vl: 15 }
-  jesus:     { enabled: true, kick-vl: 10 }
-  spider:    { enabled: true, kick-vl: 10 }
-  highjump:  { enabled: true, kick-vl: 8 }
-  speedmine: { enabled: true, kick-vl: 10, tolerance: 0.7 }
-  nodelay:   { enabled: true, kick-vl: 8, min-gap-ms: 150, buffer: 4 }
-  esp:       { enabled: true, kick-vl: 8 }
+  fly:           { enabled: true, kick-vl: 12 }
+  speed:         { enabled: true, kick-vl: 15 }
+  jesus:         { enabled: true, kick-vl: 10 }
+  spider:        { enabled: true, kick-vl: 10 }
+  highjump:      { enabled: true, kick-vl: 8 }
+  nojumpdelay:   { enabled: true, kick-vl: 10 }
+  nofall:        { enabled: true, kick-vl: 8 }
+  clicktp:       { enabled: true, kick-vl: 4 }
+  airstuck:      { enabled: true, kick-vl: 5 }
+  elytrafly:     { enabled: true, kick-vl: 8 }
+  boatfly:       { enabled: true, kick-vl: 8 }
+  entityspeed:   { enabled: true, kick-vl: 8 }
+  entitycontrol: { enabled: true, kick-vl: 6 }
+  speedmine:     { enabled: true, kick-vl: 10, tolerance: 0.7 }
+  nodelay:       { enabled: true, kick-vl: 8, min-gap-ms: 150, buffer: 4 }
+  reach:         { enabled: true, kick-vl: 8, max: 3.4 }
+  killaura:      { enabled: true, kick-vl: 8 }
+  aimassist:     { enabled: true, kick-vl: 10 }
+  autoclick:     { enabled: true, kick-vl: 6 }
+  crystalaura:   { enabled: true, kick-vl: 6 }
+  anchoraura:    { enabled: true, kick-vl: 6 }
+  autototem:     { enabled: true, kick-vl: 5 }
+  fastuse:       { enabled: true, kick-vl: 6, min-ms: 650 }
+  fastxp:        { enabled: true, kick-vl: 6 }
+  esp:           { enabled: true, kick-vl: 8 }
+  baitesp:       { enabled: true, kick-vl: 9 }
+
+bait:
+  enabled: true
 
 anti-esp:
   enabled: true
