@@ -1,0 +1,26 @@
+alert-format: "&8[&bZyven&8] &f%player% &7failed &c%check% &8(&7vl %vl%&8) &7%info%"
+punish-command: "kick %player% ZyvenAntiCheat: Unfair advantage detected (%check%)"
+setback: true
+
+checks:
+  fly:       { enabled: true, kick-vl: 12 }
+  speed:     { enabled: true, kick-vl: 15 }
+  jesus:     { enabled: true, kick-vl: 10 }
+  spider:    { enabled: true, kick-vl: 10 }
+  highjump:  { enabled: true, kick-vl: 8 }
+  speedmine: { enabled: true, kick-vl: 10, tolerance: 0.7 }
+  nodelay:   { enabled: true, kick-vl: 8, min-gap-ms: 150, buffer: 4 }
+  esp:       { enabled: true, kick-vl: 8 }
+
+anti-esp:
+  enabled: true
+  interval-ticks: 5
+  range: 64
+  close-distance: 6
+  hide-mobs: true
+  decoy:
+    enabled: true
+    stare-samples: 14
+  punish:
+    seconds: 30
+    particles: 300
